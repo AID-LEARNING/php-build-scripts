@@ -929,6 +929,7 @@ RANLIB=$RANLIB CFLAGS="$CFLAGS $FLAGS_LTO" CXXFLAGS="$CXXFLAGS $FLAGS_LTO" LDFLA
 --with-openssl \
 --with-zip \
 --with-libdeflate="$INSTALL_DIR" \
+
 $HAS_LIBJPEG \
 $HAS_GD \
 --with-leveldb="$INSTALL_DIR" \
@@ -954,6 +955,8 @@ $HAS_DEBUG \
 --without-iconv \
 --with-pdo-sqlite \
 --with-pdo-mysql \
+--with-mongodb-system-libs="yes" \
+--with-mongodb-ssl \
 --with-pic \
 --enable-phar \
 --enable-ctype \
