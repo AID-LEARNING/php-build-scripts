@@ -954,8 +954,10 @@ $HAS_DEBUG \
 --without-iconv \
 --with-pdo-sqlite \
 --with-pdo-mysql \
+--with-libbson="yes" \
+--with--libmongoc="yes" \
 --with-mongodb-system-libs="yes" \
---with-mongodb-ssl \
+--with-mongodb-ssl="auto" \
 --with-pic \
 --enable-phar \
 --enable-ctype \
