@@ -25,6 +25,7 @@ EXT_CRYPTO_VERSION="0.3.2"
 EXT_RECURSIONGUARD_VERSION="0.1.0"
 EXT_LIBDEFLATE_VERSION="0.1.0"
 EXT_MORTON_VERSION="0.1.2"
+EXT_VANILLAGENERATOR_VERSION="56fc48ea1367e1d08b228dfa580b513fbec8ca31"
 EXT_XXHASH_VERSION="0.1.1"
 
 function write_out {
@@ -844,6 +845,9 @@ get_github_extension "morton" "$EXT_MORTON_VERSION" "pmmp" "ext-morton"
 
 get_github_extension "xxhash" "$EXT_XXHASH_VERSION" "pmmp" "ext-xxhash"
 
+get_github_extension "vanillagenerator" "$EXT_VANILLAGENERATOR_VERSION" "RECT-inc" "ext-vanillagenerator"
+
+
 echo -n "[PHP]"
 
 if [ "$DO_OPTIMIZE" != "no" ]; then
@@ -975,6 +979,7 @@ $HAVE_MYSQLI \
 --enable-opcache=$HAVE_OPCACHE \
 --enable-opcache-jit=$HAVE_OPCACHE \
 --enable-igbinary \
+--enable-vanillagenerator \
 --with-crypto \
 --enable-recursionguard \
 --enable-xxhash \
