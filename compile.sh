@@ -1,26 +1,26 @@
 #!/bin/bash
-[ -z "$PHP_VERSION" ] && PHP_VERSION="8.0.21"
+[ -z "$PHP_VERSION" ] && PHP_VERSION="8.0.25"
 
-ZLIB_VERSION="1.2.11" #1.2.12 breaks on macOS and probably cross-compile too due to ignoring $CC
+ZLIB_VERSION="1.2.13"
 GMP_VERSION="6.2.1"
-CURL_VERSION="curl-7_84_0"
+CURL_VERSION="curl-7_86_0"
 YAML_VERSION="0.2.5"
 LEVELDB_VERSION="1c7564468b41610da4f498430e795ca4de0931ff"
-LIBXML_VERSION="2.9.14"
-LIBPNG_VERSION="1.6.37"
+LIBXML_VERSION="2.10.1" #2.10.2 requires automake 1.16.3, which isn't easily available on Ubuntu 20.04
+LIBPNG_VERSION="1.6.38"
 LIBJPEG_VERSION="9e"
-OPENSSL_VERSION="1.1.1p" #1.1.1q breaks on macOS (https://github.com/openssl/openssl/issues/18720)
+OPENSSL_VERSION="1.1.1s"
 LIBZIP_VERSION="1.9.2"
 SQLITE3_YEAR="2022"
-SQLITE3_VERSION="3390100" #3.39.1
-LIBDEFLATE_VERSION="6b5b57116c5b1672a2407aa68f3a49c72f877cb3" #1.12
+SQLITE3_VERSION="3400000" #3.40.0
+LIBDEFLATE_VERSION="0d1779a071bcc636e5156ddb7538434da7acad22" #1.14
 
-EXT_PTHREADS_VERSION="4.0.0"
+EXT_PTHREADS_VERSION="4.1.4"
 EXT_YAML_VERSION="2.2.2"
 EXT_LEVELDB_VERSION="317fdcd8415e1566fc2835ce2bdb8e19b890f9f3"
 EXT_CHUNKUTILS2_VERSION="0.3.3"
-EXT_XDEBUG_VERSION="3.1.5"
-EXT_IGBINARY_VERSION="3.2.7"
+EXT_XDEBUG_VERSION="3.1.6"
+EXT_IGBINARY_VERSION="3.2.12"
 EXT_CRYPTO_VERSION="0.3.2"
 EXT_RECURSIONGUARD_VERSION="0.1.0"
 EXT_LIBDEFLATE_VERSION="0.1.0"
@@ -117,6 +117,7 @@ DO_CLEANUP="yes"
 COMPILE_DEBUG="no"
 HAVE_VALGRIND="--without-valgrind"
 HAVE_OPCACHE="yes"
+HAVE_XDEBUG="yes"
 FSANITIZE_OPTIONS=""
 FLAGS_LTO=""
 
@@ -136,7 +137,7 @@ while getopts "::t:j:srdxff:gnva:" OPTION; do
 			THREADS="$OPTARG"
 			;;
 		d)
-			echo "[opt] Will compile xdebug, will not remove sources"
+			echo "[opt] Will compile everything with debugging symbols, will not remove sources"
 			COMPILE_DEBUG="yes"
 			DO_CLEANUP="no"
 			CFLAGS="$CFLAGS -g"
@@ -295,11 +296,15 @@ if [ "$DO_STATIC" == "yes" ]; then
 	if [ "$FSANITIZE_OPTIONS" != "" ]; then
 		echo "[warning] Sanitizers cannot be used on static builds"
 	fi
+	if [ "$HAVE_XDEBUG" == "yes" ]; then
+	  write_out "warning" "Xdebug cannot be built in static mode"
+	  HAVE_XDEBUG="no"
+	fi
 fi
 
 if [ "$DO_OPTIMIZE" != "no" ]; then
 	#FLAGS_LTO="-fvisibility=hidden -flto"
-	CFLAGS="$CFLAGS -O2 -ffast-math -ftree-vectorize -fomit-frame-pointer -funswitch-loops -fivopts"
+	CFLAGS="$CFLAGS -O2 -ftree-vectorize -fomit-frame-pointer -funswitch-loops -fivopts"
 	if [ "$COMPILE_TARGET" != "mac-x86-64" ] && [ "$COMPILE_TARGET" != "mac-arm64" ]; then
 		CFLAGS="$CFLAGS -funsafe-loop-optimizations -fpredictive-commoning -ftracer -ftree-loop-im -frename-registers -fcx-limited-range"
 	fi
@@ -331,7 +336,10 @@ echo "}" >> test.c
 
 type $CC >> "$DIR/install.log" 2>&1 || { echo >&2 "[ERROR] Please install \"$CC\""; exit 1; }
 
-[ -z "$THREADS" ] && THREADS=1;
+if [ -z "$THREADS" ]; then
+	write_out "WARNING" "Only 1 thread is used by default. Increase thread count using -j (e.g. -j 4) to compile faster."	
+	THREADS=1;
+fi
 [ -z "$march" ] && march=native;
 [ -z "$mtune" ] && mtune=native;
 [ -z "$CFLAGS" ] && CFLAGS="";
@@ -1069,8 +1077,37 @@ if [ "$HAVE_OPCACHE" == "yes" ]; then
 	echo "opcache.jit=off" >> "$INSTALL_DIR/bin/php.ini"
 	echo "opcache.jit_buffer_size=128M" >> "$INSTALL_DIR/bin/php.ini"
 fi
+if [ "$COMPILE_TARGET" == "mac-"* ]; then
+	#we don't have permission to allocate executable memory on macOS due to not being codesigned
+	#workaround this for now by disabling PCRE JIT
+	echo "" >> "$INSTALL_DIR/bin/php.ini"
+	echo "pcre.jit=off" >> "$INSTALL_DIR/bin/php.ini"
+fi
 
 echo " done!"
+
+if [[ "$HAVE_XDEBUG" == "yes" ]]; then
+	get_pecl_extension "xdebug" "$EXT_XDEBUG_VERSION"
+	echo -n "[xdebug] checking..."
+	cd "$BUILD_DIR/php/ext/xdebug"
+	"$INSTALL_DIR/bin/phpize" >> "$DIR/install.log" 2>&1
+	./configure --with-php-config="$INSTALL_DIR/bin/php-config" >> "$DIR/install.log" 2>&1
+	echo -n " compiling..."
+	make -j4 >> "$DIR/install.log" 2>&1
+	echo -n " installing..."
+	make install >> "$DIR/install.log" 2>&1
+	echo "" >> "$INSTALL_DIR/bin/php.ini" 2>&1
+	echo "zend_extension=xdebug.so" >> "$INSTALL_DIR/bin/php.ini" 2>&1
+	echo ";https://xdebug.org/docs/all_settings#mode" >> "$INSTALL_DIR/bin/php.ini" 2>&1
+	echo "xdebug.mode=off" >> "$INSTALL_DIR/bin/php.ini" 2>&1
+	echo "xdebug.start_with_request=yes" >> "$INSTALL_DIR/bin/php.ini" 2>&1
+	echo ";The following overrides allow profiler, gc stats and traces to work correctly in ZTS" >> "$INSTALL_DIR/bin/php.ini" 2>&1
+	echo "xdebug.profiler_output_name=cachegrind.%s.%p.%r" >> "$INSTALL_DIR/bin/php.ini" 2>&1
+	echo "xdebug.gc_stats_output_name=gcstats.%s.%p.%r" >> "$INSTALL_DIR/bin/php.ini" 2>&1
+	echo "xdebug.trace_output_name=trace.%s.%p.%r" >> "$INSTALL_DIR/bin/php.ini" 2>&1
+	echo " done!"
+	write_out INFO "Xdebug is included, but disabled by default. To enable it, change 'xdebug.mode' in your php.ini file."
+fi
 
 echo -n "[MongoDB] downloading..."
 git clone https://github.com/mongodb/mongo-php-driver.git  >> "$DIR/install.log" 2>&1
@@ -1085,20 +1122,6 @@ echo -n " installing..."
 make install >> "$DIR/install.log" 2>&1
 echo "extension=mongodb.so" >> "$DIR/bin/php7/bin/php.ini"
 echo " done!"
-
-if [[ "$DO_STATIC" != "yes" ]] && [[ "$COMPILE_DEBUG" == "yes" ]]; then
-	get_pecl_extension "xdebug" "$EXT_XDEBUG_VERSION"
-	echo -n "[xdebug] checking..."
-	cd "$BUILD_DIR/php/ext/xdebug"
-	"$INSTALL_DIR/bin/phpize" >> "$DIR/install.log" 2>&1
-	./configure --with-php-config="$INSTALL_DIR/bin/php-config" >> "$DIR/install.log" 2>&1
-	echo -n " compiling..."
-	make -j4 >> "$DIR/install.log" 2>&1
-	echo -n " installing..."
-	make install >> "$DIR/install.log" 2>&1
-	echo "zend_extension=xdebug.so" >> "$INSTALL_DIR/bin/php.ini"
-	echo " done!"
-fi
 
 cd "$DIR"
 if [ "$DO_CLEANUP" == "yes" ]; then
