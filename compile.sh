@@ -324,7 +324,7 @@ if [ "$TOOLCHAIN_PREFIX" != "" ]; then
 		export AR="$TOOLCHAIN_PREFIX-ar"
 		export RANLIB="$TOOLCHAIN_PREFIX-ranlib"
 		export CPP="$TOOLCHAIN_PREFIX-cpp"
-		export LD="$TOOLCHAIN_PREFIX-ld"
+		#export LD="$TOOLCHAIN_PREFIX-ld"
 fi
 
 echo "#include <stdio.h>" > test.c
@@ -1092,13 +1092,13 @@ git clone https://github.com/mongodb/mongo-php-driver.git  >> "$DIR/install.log"
 echo -n " checking..."
 cd mongo-php-driver
 git submodule update --init  >> "$DIR/install.log" 2>&1
-$DIR/bin/php7/bin/phpize >> "$DIR/install.log" 2>&1
-./configure --with-php-config="$DIR/bin/php7/bin/php-config" >> "$DIR/install.log" 2>&1
+$INSTALL_DIR/bin/phpize >> "$DIR/install.log" 2>&1
+./configure --with-php-config ="$INSTALL_DIR/bin/php-config" >> "$DIR/install.log" 2>&1
 echo -n " compiling..."
 make all >> "$DIR/install.log" 2>&1
 echo -n " installing..."
 make install >> "$DIR/install.log" 2>&1
-echo "extension=mongodb.so" >> "$DIR/bin/php7/bin/php.ini"
+echo "extension=mongodb.so" >> "$INSTALL_DIR/bin/php.ini"
 echo " done!"
 
 
