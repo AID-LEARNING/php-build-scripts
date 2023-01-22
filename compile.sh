@@ -195,6 +195,7 @@ if [ "$IS_CROSSCOMPILE" == "yes" ]; then
 		CONFIGURE_FLAGS="--host=$TOOLCHAIN_PREFIX --target=$TOOLCHAIN_PREFIX --build=$TOOLCHAIN_PREFIX"
 		IS_WINDOWS="yes"
 		OPENSSL_TARGET="mingw64"
+		echo $march
 		GMP_ABI="64"
 		echo "[INFO] Cross-compiling for Windows 64-bit"
 	elif [ "$COMPILE_TARGET" == "mac" ]; then
@@ -324,7 +325,7 @@ if [ "$TOOLCHAIN_PREFIX" != "" ]; then
 		export AR="$TOOLCHAIN_PREFIX-ar"
 		export RANLIB="$TOOLCHAIN_PREFIX-ranlib"
 		export CPP="$TOOLCHAIN_PREFIX-cpp"
-		#export LD="$TOOLCHAIN_PREFIX-ld"
+		export LD="$TOOLCHAIN_PREFIX-ld"
 fi
 
 echo "#include <stdio.h>" > test.c
@@ -853,7 +854,9 @@ get_github_extension "morton" "$EXT_MORTON_VERSION" "pmmp" "ext-morton"
 
 get_github_extension "xxhash" "$EXT_XXHASH_VERSION" "pmmp" "ext-xxhash"
 
-get_github_extension "vanillagenerator" "$EXT_VANILLAGENERATOR_VERSION" "RECT-inc" "ext-vanillagenerator"
+get_github_extension "vanillagenerator" "$EXT_VANILLAGENERATOR_VERSION" "AID-LEARNING" "ext-vanillagenerator"
+
+get_github_extension "mongodb" "$EXT_VANILLAGENERATOR_VERSION" "mongodb" "mongo-php-driver"
 
 
 echo -n "[PHP]"
@@ -1061,6 +1064,20 @@ echo "display_errors=1" >> "$INSTALL_DIR/bin/php.ini"
 echo "display_startup_errors=1" >> "$INSTALL_DIR/bin/php.ini"
 echo "recursionguard.enabled=0 ;disabled due to minor performance impact, only enable this if you need it for debugging" >> "$INSTALL_DIR/bin/php.ini"
 
+#echo -n "[MongoDB] downloading..."
+#git clone https://github.com/mongodb/mongo-php-driver.git "$BUILD_DIR"  >> "$DIR/install.log" 2>&1
+#echo -n " checking..."
+#cd mongo-php-driver
+#git submodule update --init --recursive   >> "$DIR/install.log" 2>&1
+#$INSTALL_DIR/bin/phpize >> "$DIR/install.log" 2>&1
+#./configure --with-php-config ="$INSTALL_DIR/bin/php-config" >> "$DIR/install.log" 2>&1
+#echo -n " compiling..."
+#make all >> "$DIR/install.log" 2>&1
+#echo -n " installing..."
+#make install >> "$DIR/install.log" 2>&1
+#echo "extension=mongodb.so" >> "$INSTALL_DIR/bin/php.ini"
+#echo " done!"
+
 if [ "$HAVE_OPCACHE" == "yes" ]; then
 	echo "zend_extension=opcache.so" >> "$INSTALL_DIR/bin/php.ini"
 	echo "opcache.enable=1" >> "$INSTALL_DIR/bin/php.ini"
@@ -1087,19 +1104,6 @@ fi
 echo " done!"
 
 
-echo -n "[MongoDB] downloading..."
-git clone https://github.com/mongodb/mongo-php-driver.git  >> "$DIR/install.log" 2>&1
-echo -n " checking..."
-cd mongo-php-driver
-git submodule update --init  >> "$DIR/install.log" 2>&1
-$INSTALL_DIR/bin/phpize >> "$DIR/install.log" 2>&1
-./configure --with-php-config ="$INSTALL_DIR/bin/php-config" >> "$DIR/install.log" 2>&1
-echo -n " compiling..."
-make all >> "$DIR/install.log" 2>&1
-echo -n " installing..."
-make install >> "$DIR/install.log" 2>&1
-echo "extension=mongodb.so" >> "$INSTALL_DIR/bin/php.ini"
-echo " done!"
 
 
 if [[ "$HAVE_XDEBUG" == "yes" ]]; then
