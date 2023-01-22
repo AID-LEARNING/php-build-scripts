@@ -6,6 +6,22 @@ on:
   workflow_dispatch:
 
 jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install tools and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install make autoconf automake libtool libtool-bin m4 wget libc-bin gzip bzip2 bison g++ git re2c
+
+
+      - name: Prepare workspace for upload
+        if: failure()
+        run: ls
   linux:
     name: Linux
     runs-on: ubuntu-20.04
@@ -29,6 +45,29 @@ jobs:
       - name: Create tarball
         run: tar -czf ./PHP_Linux-x86_64.tar.gz bin
         
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: Linux
+          path: |
+            ./PHP_Linux-x86_64.tar.gz
+            install.log
+            compile.sh
+          if-no-files-found: error
+
+      - name: Prepare workspace for upload
+        if: failure()
+        run: tar -czf workspace.tar.gz install_data
+
+      - name: Upload workspace
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: Linux-workspace
+          path: |
+            workspace.tar.gz
+          if-no-files-found: error
 
   macos:
     name: MacOS
